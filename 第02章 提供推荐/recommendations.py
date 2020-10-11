@@ -33,11 +33,14 @@ def sim_distance(prefs, person1, person2):
         return 0
 
     # 计算所有差值的平方和
-    sum_of_squares = sum([pow(prefs[person1][item] - prefs[person2][item], 2)
-                          for item in si.keys()])
+    sum_of_squares = 0
+    for item in si.keys():
+        # 这里所做的就是等同于在计算二维中x y 的差值
+        sum_of_squares = sum_of_squares + pow(prefs[person1][item] - prefs[person2][item], 2)
 
     return 1 / (1 + sqrt(sum_of_squares))
 
+# print(sim_distance(critics, 'Lisa Rose', 'Gene Seymour'))
 
 # 返回p1和p2的皮尔逊相关系数
 def sim_pearson(prefs, p1, p2):
@@ -75,9 +78,10 @@ def sim_pearson(prefs, p1, p2):
 
     return r
 
+#print(sim_pearson(critics, 'Lisa Rose', 'Gene Seymour'))
 
-# Returns the best matches for person from the prefs dictionary.
-# Number of results and similarity function are optional params.
+# 从反映偏好的词典中返回最为匹配者
+# 返回的个数以及相似度算法都是可选的
 def topMatches(prefs, person, n=5, similarity=sim_pearson):
     scores = [(similarity(prefs, person, other), other)
               for other in prefs if other != person]
@@ -85,6 +89,7 @@ def topMatches(prefs, person, n=5, similarity=sim_pearson):
     scores.reverse()
     return scores[0:n]
 
+# print(topMatches(critics, "Toby"))
 
 # Gets recommendations for a person by using a weighted average
 # of every other user's rankings
