@@ -20,15 +20,15 @@ def readfile(filename):
 
 
 def pearson(v1, v2):
-    # Simple sums
+    # 简单求和
     sum1 = sum(v1)
     sum2 = sum(v2)
 
-    # Sums of the squares
+    # 平方根和
     sum1Sq = sum([pow(v, 2) for v in v1])
     sum2Sq = sum([pow(v, 2) for v in v2])
 
-    # Sum of the products
+    # 乘积之和
     pSum = sum([v1[i] * v2[i] for i in range(len(v1))])
 
     # Calculate r (Pearson score)
@@ -52,17 +52,18 @@ def hcluster(rows, distance=pearson):
     distances = {}
     currentclustid = -1
 
-    # Clusters are initially just the rows
+    # 最初的顶层聚类等于数据集中的行
     clust = [bicluster(rows[i], id=i) for i in range(len(rows))]
 
+    # 不断聚合 直到只剩下一个顶层聚类
     while len(clust) > 1:
         lowestpair = (0, 1)
         closest = distance(clust[0].vec, clust[1].vec)
 
-        # loop through every pair looking for the smallest distance
+        # 遍历每个配对 寻找最小距离
         for i in range(len(clust)):
             for j in range(i + 1, len(clust)):
-                # distances is the cache of distance calculations
+                # 缓存距离
                 if (clust[i].id, clust[j].id) not in distances:
                     distances[(clust[i].id, clust[j].id)] = distance(clust[i].vec, clust[j].vec)
 
@@ -72,17 +73,17 @@ def hcluster(rows, distance=pearson):
                     closest = d
                     lowestpair = (i, j)
 
-        # calculate the average of the two clusters
+        # 计算两个聚类的平均值
         mergevec = [
             (clust[lowestpair[0]].vec[i] + clust[lowestpair[1]].vec[i]) / 2.0
             for i in range(len(clust[0].vec))]
 
-        # create the new cluster
+        # 创建新聚类
         newcluster = bicluster(mergevec, left=clust[lowestpair[0]],
                                right=clust[lowestpair[1]],
                                distance=closest, id=currentclustid)
 
-        # cluster ids that weren't in the original set are negative
+        # 不在原始集合中的聚类 其id为负数
         currentclustid -= 1
         del clust[lowestpair[1]]
         del clust[lowestpair[0]]
@@ -111,6 +112,9 @@ def printclust(clust, labels=None, n=0):
     if clust.right is not None:
         printclust(clust.right, labels=labels, n=n + 1)
 
+blognames, words, data = readfile('./data/blogdata.txt')
+clust = hcluster(data)
+# printclust(clust, labels=blognames)
 
 # Drawing the Dendrogram
 def getheight(clust):
@@ -177,6 +181,7 @@ def drawnode(draw, clust, x, y, scaling, labels):
         # If this is an endpoint, draw the item label
         draw.text((x + 5, y - 7), labels[clust.id], (0, 0, 0))
 
+# drawdendrogram(clust, blognames, jpeg='blogclust.jpg')
 
 # Column Clustering
 def rotatematrix(data):
@@ -186,17 +191,20 @@ def rotatematrix(data):
         newdata.append(newrow)
     return newdata
 
+rdata=rotatematrix(data)
+wordclust=hcluster(rdata)
+#drawdendrogram(wordclust, labels=words, jpeg='wordclust.jpg')
 
 import random
 
 
 # K-Means Clustering
 def kcluster(rows, distance=pearson, k=4):
-    # Determine the minimum and maximum values for each point
+    # 确定每个点的最大最小值
     ranges = [(min([row[i] for row in rows]), max([row[i] for row in rows]))
               for i in range(len(rows[0]))]
 
-    # Create k randomly placed centroids
+    # 随机创建k个中心点
     clusters = [[random.random() * (ranges[i][1] - ranges[i][0]) + ranges[i][0]
                  for i in range(len(rows[0]))] for j in range(k)]
 
@@ -207,7 +215,7 @@ def kcluster(rows, distance=pearson, k=4):
         print('Iteration %d' % t)
         bestmatches = [[] for i in range(k)]
 
-        # Find which centroid is the closest for each row
+        # 在每一行中寻找距离最近的中心点
         for j in range(len(rows)):
             row = rows[j]
             bestmatch = 0
@@ -218,12 +226,12 @@ def kcluster(rows, distance=pearson, k=4):
             dis_sum += d
             bestmatches[bestmatch].append(j)
 
-        # If the results are the same as last time, this is complete
+        # 如果与上次结果相同 则结束
         if bestmatches == lastmatches:
             break
         lastmatches = bestmatches
 
-        # Move the centroids to the average of their members
+        # 把中心移到其所有成员的平均位置处
         for i in range(k):
             avgs = [0.0] * len(rows[0])
             if len(bestmatches[i]) > 0:
@@ -236,7 +244,8 @@ def kcluster(rows, distance=pearson, k=4):
 
     return bestmatches, dis_sum
 
-
+# kclust = kcluster(data,k=10)
+# print(kclust)
 # Clusters of Preference
 def tanamoto(v1, v2):
     c1, c2, shr = 0, 0, 0
@@ -263,23 +272,23 @@ def manhattan(v1, v2):
 def scaledown(data, distance=pearson, rate=0.01):
     n = len(data)
 
-    # The real distances between every pair of items
+    # 每一对数据项之间的距离
     realdist = [[distance(data[i], data[j]) for j in range(n)]
                 for i in range(0, n)]
 
-    # Randomly initialize the starting points of the locations in 2D
+    # 随机初始化节点再二维空间的起始位置
     loc = [[random.random(), random.random()] for i in range(n)]
     fakedist = [[0.0 for j in range(n)] for i in range(n)]
 
     lasterror = None
     for m in range(0, 1000):
-        # Find projected distances
+        # 寻找投影后的距离
         for i in range(n):
             for j in range(n):
                 fakedist[i][j] = sqrt(sum([pow(loc[i][x] - loc[j][x], 2)
                                            for x in range(len(loc[i]))]))
 
-        # Move points
+        # 移动节点
         grad = [[0.0, 0.0] for i in range(n)]
 
         totalerror = 0
@@ -318,3 +327,6 @@ def draw2d(data, labels, jpeg='mds2d.jpg'):
         y = (data[i][1] + 0.5) * 1000
         draw.text((x, y), labels[i], (0, 0, 0))
     img.save(jpeg, 'JPEG')
+
+coords = scaledown(data)
+draw2d(coords, blognames, jpeg="blogs2d.jpg")
