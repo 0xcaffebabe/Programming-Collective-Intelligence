@@ -1,3 +1,4 @@
+from sqlite3.dbapi2 import Error
 import urllib.request
 import urllib.parse
 import sqlite3
@@ -37,12 +38,12 @@ class crawler:
 
     # Index an individual page
     def addtoindex(self, url, soup):
-        if self.isindexed(url): return
+        if self.isindexed(self=self,url=url): return
         print('Indexing ' + url)
 
         # Get the individual words
         text = self.gettextonly(soup)
-        words = self.separatewords(text)
+        words = self.separatewords(self=self,text = text)
 
         # Get the URL id
         urlid = self.getentryid('urllist', 'url', url)
@@ -57,7 +58,7 @@ class crawler:
     # Extract the text from an HTML page (no tags)
     def gettextonly(self, soup):
         v = soup.string
-        if len(v) == 0:
+        if v == None:
             c = soup.contents
             resulttext = ''
             for t in c:
@@ -67,7 +68,7 @@ class crawler:
         else:
             return v.strip()
 
-    # Seperate the words by any non-whitespace character
+    # 使用正则表达式进行分词
     @staticmethod
     def separatewords(self, text):
         splitter = re.compile('\\W*')
@@ -80,7 +81,7 @@ class crawler:
 
     # Add a link between two pages
     def addlinkref(self, urlFrom, urlTo, linkText):
-        words = self.separateWords(linkText)
+        words = self.separatewords(self=self,text=linkText)
         fromid = self.getentryid('urllist', 'url', urlFrom)
         toid = self.getentryid('urllist', 'url', urlTo)
         if fromid == toid: return
@@ -114,13 +115,14 @@ class crawler:
                             if url.find("'") != -1:
                                 continue
                             url = url.split('#')[0]  # remove location portion
-                            if url[0:4] == 'http' and not self.isindexed(url):
+                            if url[0:4] == 'http' and not self.isindexed(self=self,url=url):
                                 newpages[url] = 1
                             linkText = self.gettextonly(link)
                             self.addlinkref(page, url, linkText)
 
                     self.dbcommit()
-                except:
+                except Error as e:
+                    print(e)
                     print("Could not parse page %s" % page)
 
             pages = newpages
@@ -179,18 +181,18 @@ class searcher:
         self.con.close()
 
     def getmatchrows(self, q):
-        # Strings to build the query
+        # 构造sql查询条件字符串
         fieldlist = 'w0.urlid'
         tablelist = ''
         clauselist = ''
         wordids = []
 
-        # Split the words by spaces
+        # 分词
         words = q.split(' ')
         tablenumber = 0
 
         for word in words:
-            # Get the word ID
+            # 获取单词的ID
             wordrow = self.con.execute(
                 "select rowid from wordlist where word='%s'" % word).fetchone()
             if wordrow is not None:
@@ -205,7 +207,7 @@ class searcher:
                 clauselist += 'w%d.wordid=%d' % (tablenumber, wordid)
                 tablenumber += 1
 
-        # Create the query from the separate parts
+        # 根据条件进行查询
         fullquery = 'select %s from %s where %s' % (fieldlist, tablelist, clauselist)
         print(fullquery)
         cur = self.con.execute(fullquery)
@@ -316,3 +318,10 @@ class searcher:
         nnres = mynet.getresult(wordids, urlids)
         scores = dict([(urlids[i], nnres[i]) for i in range(len(urlids))])
         return self.normalizescores(scores)
+
+# c = crawler('searchindex.db')
+# c.createindextables() 使用前创建一下
+#pages = ['http://www.whitehouse.gov']
+#c.crawl(pages)
+e = searcher('searchindex.db')
+print(e.getmatchrows('trump'))
