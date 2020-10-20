@@ -219,19 +219,19 @@ class searcher:
         totalscores = dict([(row[0], 0) for row in rows])
 
         # This is where we'll put our scoring functions
-        # weights = [(1.0, self.locationscore(rows)),
-        #            (1.0, self.frequencyscore(rows)),
-        #            (1.0, self.pagerankscore(rows)),
-        #            (1.0, self.linktextscore(rows, wordids)),
-        #            (5.0, self.nnscore(rows, wordids))]
+        weights = [(1.0, self.locationscore(rows)),
+                   (1.0, self.frequencyscore(rows)),
+                   (1.0, self.pagerankscore(rows)),
+                   (1.0, self.linktextscore(rows, wordids)),
+                   (5.0, self.nnscore(rows, wordids))]
 
         # test code
-        weights = [(1.0, self.frequencyscore(rows)),
-                   (1.0, self.locationscore(rows)),
-                   (1.0)]
-
+        # weights = [(1.0, self.frequencyscore(rows)),
+        #            (1.0, self.locationscore(rows)),
+        #            (1.0)]
         for (weight, scores) in weights:
             for url in totalscores:
+                print(url)
                 totalscores[url] += weight * scores[url]
 
         return totalscores
@@ -251,7 +251,7 @@ class searcher:
         return wordids, [r[1] for r in rankedscores[0:10]]
 
     def normalizescores(self, scores, smallIsBetter=0):
-        vsmall = 0.00001  # Avoid division by zero errors
+        vsmall = 0.00001  # 避免除0
         if smallIsBetter:
             minscore = min(scores.values())
             return dict([(u, float(minscore) / max(vsmall, l)) for (u, l) in scores.items()])
@@ -274,10 +274,10 @@ class searcher:
         return self.normalizescores(locations, smallIsBetter=1)
 
     def distancescore(self, rows):
-        # If there's only one word, everyone wins!
+        # 只有一个单词 则得分一样
         if len(rows[0]) <= 2: return dict([(row[0], 1.0) for row in rows])
 
-        # Initialize the dictionary with large values
+        # 初始化分数 很大
         mindistance = dict([(row[0], 1000000) for row in rows])
 
         for row in rows:
@@ -301,6 +301,8 @@ class searcher:
                     pr = self.con.execute('select score from pagerank where urlid=%d' % fromid).fetchone()[0]
                     linkscores[toid] += pr
         maxscore = max(linkscores.values())
+        if maxscore == 0:
+            maxscore = 0.00001
         normalizedscores = dict([(u, float(l) / maxscore) for (u, l) in linkscores.items()])
         return normalizedscores
 
@@ -324,4 +326,4 @@ class searcher:
 #pages = ['http://www.whitehouse.gov']
 #c.crawl(pages)
 e = searcher('searchindex.db')
-print(e.getmatchrows('trump'))
+print(e.query('python'))
